@@ -1,5 +1,5 @@
 #include "StateMachine2.h"
-//table driven state machine with event queue test
+//table driven state machine with event queue. Test program
 
 #define NUM_ELEMENTS(x) (sizeof(x)/sizeof(x[0]))
 
@@ -56,10 +56,12 @@ void Led_Init(uint8_t data) {
 
 void Led_On(uint8_t data) {
     Serial.println(F("Led_On() called - LED turned on."));
+    digitalWrite(LED, HIGH);
 }
 
 void Led_Off(uint8_t data) {
     Serial.println(F("Led_Off() called - LED turned off."));
+    digitalWrite(LED, LOW);
 }
 
 void Led_Idle(uint8_t data) {
@@ -68,7 +70,7 @@ void Led_Idle(uint8_t data) {
 
 //event-driven state machine
 
-StateMachine<state_t, event_t, stateTransMatrixRow_t, NUM_ELEMENTS(stateTransMatrix)> sm2(stateTransMatrix);
+StateMachine<state_t, event_t, stateTransMatrixRow_t, NUM_ELEMENTS(stateTransMatrix)> theSM(stateTransMatrix);
 
 //event queue
 EventQueue<event_t, 16> evQueue;
@@ -78,15 +80,18 @@ EventQueue<event_t, 16> evQueue;
 
 void setup() {
   Serial.begin(115200);
+    pinMode(LED, OUTPUT);
+    digitalWrite(LED, LOW);
+    
    Serial.println(F("Test SM"));
    Serial.println(F("======="));
    
    Serial.print(F("Transition table size = "));Serial.print(sizeof(stateTransMatrix));Serial.println(F(" bytes"));
  
   //get ready
-  sm2.init();
+  theSM.init();
   //do the transition into the idle state
-  sm2.runIteration(event_t::EV_ANY);
+  theSM.runIteration(event_t::EV_ANY);
 
 }
 
@@ -99,11 +104,11 @@ void loop() {
 
     switch(c){
       case 't': //timeout
-        //sm2.runIteration(event_t::EV_TIME_OUT);
+        //theSM.runIteration(event_t::EV_TIME_OUT);
         evQueue.addToQueue(event_t::EV_TIME_OUT);
         break;
       case 'b': //button
-        //sm2.runIteration(event_t::EV_BUTTON_PUSHED);
+        //theSM.runIteration(event_t::EV_BUTTON_PUSHED);
         evQueue.addToQueue(event_t::EV_BUTTON_PUSHED);
         break;
       default:
@@ -117,9 +122,9 @@ void loop() {
     event_t ev = evQueue.removeFromQueue();
     //Serial.print("ev = ");Serial.println((int) ev);
     //evQueue.isQueueEmpty() ? Serial.println("empty") : Serial.println("not empty");
-    sm2.runIteration(ev);
+    theSM.runIteration(ev);
     //debug - show state number
-    Serial.print(F("state = "));Serial.println((int) sm2.getState());
+    Serial.print(F("state = "));Serial.println((int) theSM.getState());
   }
 
 }
