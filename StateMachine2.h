@@ -14,7 +14,7 @@
 Data structures for state machine:
 
 //states can be in any order, but START must be =0 and first as this is the initial state run
-enum class UIStates : uint8_t {
+enum class state_t : uint8_t {
   START = 0, 
   SPLASH, 
   RUN,
@@ -22,7 +22,7 @@ enum class UIStates : uint8_t {
 
 //events can be in any order, but ANY must be first and =0.
 // ANY is an unconditional transition actioned by running the runIteration() function immediately.
-enum class UIEvents : uint8_t {
+enum class event_t : uint8_t {
   ANY = 0, 
   UI_TIMEOUT, 
 };
@@ -33,13 +33,12 @@ typedef struct {
     state_t currState;      //current state
     event_t event;          //event to match to cause a state transition
     state_t nextState;      //next state
-    void (*func)(uint8_t);  //pointer to the state transition function - void fn(uint8_t)
-    uint8_t data;           //data passed to transition functions
+    void (*func)(event_t);  //pointer to the state transition function - void fn(event_t)
 } stateTransMatrixRow_t;
 
 //UI state machine forward decl of transition functions. Called when current state and event match.
-void StartState(uint8_t);
-void RunState(uint8_t);
+void StartState(event_t);
+void RunState(event_t);
 
 //STATE MACHINE
 //Transition state matrix. (In PROGMEM as this table can be large.)
@@ -48,9 +47,9 @@ void RunState(uint8_t);
 
 //Simple example (no way out of RUN state shown)
 const stateTransMatrixRow_t stateTransMatrix[] PROGMEM = {
-    // CURR STATE               // EVENT                      // NEXT STATE             // TRANSITION FUNC      //DATA
-    { UIStates::START,          UIEvents::ANY,                UIStates::SPLASH,         &StartState,            0     },  //init
-    { UIStates::SPLASH,         UIEvents::UI_TIMEOUT,         UIStates::RUN,            &RunState,              0     },  //show the splash screen
+    // CURR STATE               // EVENT                      // NEXT STATE             // TRANSITION FUNC
+    { UIStates::START,          UIEvents::ANY,                UIStates::SPLASH,         &StartState,       },  //init
+    { UIStates::SPLASH,         UIEvents::UI_TIMEOUT,         UIStates::RUN,            &RunState,         },  //show the splash screen
 };
 
 //The instantiation of the SM would look like:
@@ -118,17 +117,15 @@ class StateMachine{
       for(int i = 0; i < N; i++) {
         //fetch table row from PROGMEM
         memcpy_P(&localData, &m_stateTransMatrix[i], sizeof(T));
-        //Serial.print("sm state =");Serial.println((int) localData.currState);
+
         if(localData.currState == m_state) {
           if((localData.event == event) || (localData.event == static_cast<E>(0) )) { //::EV_ANY = 0
 
             // Transition to the next state
             m_state =  localData.nextState;
 
-            // Call the function associated with transition - if present
-            if(localData.func){
-              (localData.func)(localData.data); //passes associated data from state table
-            }
+            // Call the function associated with transition - if not null
+            if(localData.func) localData.func(event); //passes event
             break;
           }
         }
@@ -153,9 +150,11 @@ class EventQueue{
       //clear queue
         m_head = m_tail = 0;
     }
+    
+//-------------------------------------------------------------------------------------------------
 
     bool addToQueue(T ev){ //push
-      int next = m_head + 1;
+      int16_t next = m_head + 1;
       if(next >= EVENT_QUEUE_SIZE) next = 0;
 
       if(next == m_tail) {
@@ -168,6 +167,8 @@ class EventQueue{
       return true;
     }
     
+//-------------------------------------------------------------------------------------------------
+    
     //returns the data
     T removeFromQueue(){ //pop
       if(m_head == m_tail){
@@ -176,7 +177,7 @@ class EventQueue{
         return static_cast<T>(-1);
       }
 
-      int next = m_tail + 1;
+      int16_t next = m_tail + 1;
       if(next >= EVENT_QUEUE_SIZE) next = 0;
 
       T data = m_data[m_tail];
@@ -186,18 +187,26 @@ class EventQueue{
       return data;
     }
     
+//-------------------------------------------------------------------------------------------------
+    
     //empty/full?
     bool isQueueEmpty() const{ return (m_head == m_tail);}
+    
+//-------------------------------------------------------------------------------------------------
 
     bool isQueueFull() const{
-      int next = m_head + 1;
+      int16_t next = m_head + 1;
       if(next >= EVENT_QUEUE_SIZE) next = 0;
 
       return (next == m_tail);
     }
     
+//-------------------------------------------------------------------------------------------------
+    
     //make queue empty
     void flushQueue(){m_head = m_tail;}
+    
+//-------------------------------------------------------------------------------------------------
  
   private:
     //fifo queue
@@ -207,4 +216,4 @@ class EventQueue{
 
 };
 
-
+//#################################################################################################

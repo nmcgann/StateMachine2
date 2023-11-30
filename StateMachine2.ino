@@ -3,16 +3,10 @@
 
 #define NUM_ELEMENTS(x) (sizeof(x)/sizeof(x[0]))
 
-const int LED = LED_BUILTIN;
-
-//forward decs
-void Led_Init(uint8_t data);
-void Led_On(uint8_t data);
-void Led_Off(uint8_t data);
-void Led_Idle(uint8_t data);
+const uint8_t LED = LED_BUILTIN;
 
 //state table class
-enum class state_t : int {
+enum class state_t : uint8_t {
     ST_START = 0, //must be 0 and first
     ST_IDLE,
     ST_LED_ON,
@@ -20,7 +14,7 @@ enum class state_t : int {
 };
 
 //event table class
-enum class event_t : int {
+enum class event_t : uint8_t {
     EV_ANY = 0, //must be 0 and first
     EV_NONE,
     EV_BUTTON_PUSHED,
@@ -32,39 +26,45 @@ typedef struct {
     state_t currState;      //current state
     event_t event;          //event to match to cause a state transition
     state_t nextState;      //next state
-    void (*func)(uint8_t);  //pointer to the state transition function - void fn(void)
-    uint8_t data;           //passed to transition functions (can be any type)
+    void (*func)(event_t);  //pointer to the state transition function - void fn(event_t)
 } stateTransMatrixRow_t;
+
+//forward decs
+void Led_Init(event_t);
+void Led_On(event_t);
+void Led_Off(event_t);
+void Led_Idle(event_t);
+
 
 //main state transition table
 const stateTransMatrixRow_t stateTransMatrix[] PROGMEM = {
-    // CURR STATE           // EVENT                       // NEXT STATE          //TRANSITION FN   //DATA
-    { state_t::ST_START,    event_t::EV_ANY,               state_t::ST_IDLE,      &Led_Idle,        0     },
-    { state_t::ST_IDLE,     event_t::EV_BUTTON_PUSHED,     state_t::ST_LED_ON,    &Led_On,          0     },
-    { state_t::ST_LED_ON,   event_t::EV_TIME_OUT,          state_t::ST_LED_OFF,   &Led_Off,         0     },
-    { state_t::ST_LED_ON,   event_t::EV_BUTTON_PUSHED,     state_t::ST_IDLE,      &Led_Idle,        0     },
-    { state_t::ST_LED_OFF,  event_t::EV_TIME_OUT,          state_t::ST_LED_ON,    &Led_On,          0     },
-    { state_t::ST_LED_OFF,  event_t::EV_BUTTON_PUSHED,     state_t::ST_IDLE,      &Led_Idle,        0     },
+    // CURR STATE           // EVENT                       // NEXT STATE          //TRANSITION FN
+    { state_t::ST_START,    event_t::EV_ANY,               state_t::ST_IDLE,      &Led_Idle,        },
+    { state_t::ST_IDLE,     event_t::EV_BUTTON_PUSHED,     state_t::ST_LED_ON,    &Led_On,          },
+    { state_t::ST_LED_ON,   event_t::EV_TIME_OUT,          state_t::ST_LED_OFF,   &Led_Off,         },
+    { state_t::ST_LED_ON,   event_t::EV_BUTTON_PUSHED,     state_t::ST_IDLE,      &Led_Idle,        },
+    { state_t::ST_LED_OFF,  event_t::EV_TIME_OUT,          state_t::ST_LED_ON,    &Led_On,          },
+    { state_t::ST_LED_OFF,  event_t::EV_BUTTON_PUSHED,     state_t::ST_IDLE,      &Led_Idle,        },
 
 };
 
 // State transition functions
 
-void Led_Init(uint8_t data) {
+void Led_Init(event_t e) {
     Serial.println(F("Led_Init() called."));
 }
 
-void Led_On(uint8_t data) {
+void Led_On(event_t e) {
     Serial.println(F("Led_On() called - LED turned on."));
     digitalWrite(LED, HIGH);
 }
 
-void Led_Off(uint8_t data) {
+void Led_Off(event_t e) {
     Serial.println(F("Led_Off() called - LED turned off."));
     digitalWrite(LED, LOW);
 }
 
-void Led_Idle(uint8_t data) {
+void Led_Idle(event_t e) {
     Serial.println(F("Led_Idle() called - LED in idle state."));
 }
 
